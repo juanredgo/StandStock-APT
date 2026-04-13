@@ -19,8 +19,8 @@ StandStock es una solución multiplataforma diseñada específicamente para el r
 - `web/` → Panel de administración React (próximamente)
 
 ## Evidencias de Avance (Fase 2)
-- [Documento de Requerimientos y Historias de Usuario](docs/01_Requerimientos_y_Historias_de_Usuario.docx)
-- [Prototipo de Alta Fidelidad - Figma](https://www.figma.com/...-tu-link-aquí...)
+- [Documento de Requerimientos y Historias de Usuario](docs/Documento de Requerimientos e historias de usuario.docx)
+- [Prototipo de Alta Fidelidad - Figma](https://www.figma.com/...https://www.figma.com/design/UUUlvL2oY2NDxSHHnu29lx/Inventory-Management-Dashboard--Community-?node-id=476-645&m=dev&t=xkxQeKRTdoOedyeW-1...)
 - [Script Base de Datos](database/standstock_schema.sql)
 
 ## Próximos Pasos
