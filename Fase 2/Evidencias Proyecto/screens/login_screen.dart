@@ -16,45 +16,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isVendedor = true;
-  bool _isLoading = false;
-
-  Future<void> _iniciarSesion() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final service = FirebaseService();
-      final user = await service.signInWithEmail(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DashboardVendedorScreen()),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1C1C1E),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-
+              // Logo
               Center(
                 child: Text(
                   "StandStock",
@@ -67,20 +41,21 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               const SizedBox(height: 8),
-              const Center(
+              Center(
                 child: Text(
-                  "Inicia sesión como vendedor",
-                  style: TextStyle(fontSize: 18, color: Colors.white70),
+                  _isVendedor ? "Inicia sesión como vendedor" : "Inicia sesión como administrador",
+                  style: const TextStyle(color: Colors.white70, fontSize: 18),
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 60),
 
               const Text("Email", style: TextStyle(color: Colors.white70, fontSize: 16)),
               const SizedBox(height: 8),
               TextField(
                 controller: _emailController,
                 style: const TextStyle(color: Colors.white),
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: const Color(0xFF2C2C2E),
@@ -93,7 +68,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               const SizedBox(height: 24),
-
               const Text("Contraseña", style: TextStyle(color: Colors.white70, fontSize: 16)),
               const SizedBox(height: 8),
               TextField(
@@ -109,8 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
                   ),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                    color: Colors.white70,
+                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
@@ -118,50 +91,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 32),
 
-              // Toggle Vendedor / Administrador
+              // Selección de rol
               Row(
                 children: [
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _isVendedor = true),
-                      child: Container(
+                    child: ElevatedButton(
+                      onPressed: () => setState(() => _isVendedor = true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isVendedor ? const Color(0xFF00B74A) : const Color(0xFF2C2C2E),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: _isVendedor ? const Color(0xFF00B74A) : const Color(0xFF2C2C2E),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Text(
-                            "Soy Vendedor",
-                            style: TextStyle(
-                              color: _isVendedor ? Colors.black : Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
                       ),
+                      child: Text("Soy Vendedor", style: TextStyle(color: _isVendedor ? Colors.black : Colors.white)),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _isVendedor = false),
-                      child: Container(
+                    child: ElevatedButton(
+                      onPressed: () => setState(() => _isVendedor = false),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !_isVendedor ? const Color(0xFF00B74A) : const Color(0xFF2C2C2E),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: !_isVendedor ? const Color(0xFF00B74A) : const Color(0xFF2C2C2E),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Text(
-                            "Soy Administrador",
-                            style: TextStyle(
-                              color: !_isVendedor ? Colors.black : Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
                       ),
+                      child: Text("Soy Administrador", style: TextStyle(color: !_isVendedor ? Colors.black : Colors.white)),
                     ),
                   ),
                 ],
@@ -173,19 +124,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _iniciarSesion,
+                  onPressed: () async {
+                    try {
+                      final service = FirebaseService();
+                      final user = await service.signInWithEmail(
+                        email: _emailController.text.trim(),
+                        password: _passwordController.text.trim(),
+                      );
+
+                      if (user != null && mounted) {
+                        final standId = await service.getUserStandId(user.uid);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => DashboardVendedorScreen(standId: standId)),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      }
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF00B74A),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.black)
-                      : const Text(
+                  child: const Text(
                     "Ingresar",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                 ),
               ),
+
+              const SizedBox(height: 24),
 
               Center(
                 child: TextButton(
@@ -194,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 40),
 
               Center(
                 child: TextButton(

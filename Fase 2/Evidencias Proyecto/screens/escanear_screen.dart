@@ -144,7 +144,7 @@ class _EscanearScreenState extends State<EscanearScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const BusquedaManualScreen(),
+                    builder: (context) => const BusquedaManualScreen(standId: 'stand-costanera'),
                   ),
                 );
               },

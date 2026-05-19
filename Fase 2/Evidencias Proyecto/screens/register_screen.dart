@@ -9,48 +9,66 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _nameController = TextEditingController();
+  final _nombresController = TextEditingController();
+  final _apellidosController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
 
   Future<void> _crearCuenta() async {
+    // Validaciones
+    if (_nombresController.text.trim().isEmpty || _apellidosController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Debes ingresar nombres y apellidos")),
+      );
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Las contraseñas no coinciden")),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final service = FirebaseService();
 
+      final fullName = "${_nombresController.text.trim()} ${_apellidosController.text.trim()}";
+
       final user = await service.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        nombre: _nameController.text.trim(),
+        nombre: fullName,
       );
 
       if (user != null) {
-        // 1. Apagamos la rueda ANTES de cerrar la pantalla
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
 
-        // 2. Mostramos el mensaje de éxito
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Cuenta creada correctamente"),
+            content: Text("✅ Cuenta creada correctamente"),
             backgroundColor: Color(0xFF00B74A),
           ),
         );
 
-        // 3. Esperamos un poquito para que se vea el SnackBar y luego cerramos
-        await Future.delayed(const Duration(milliseconds: 600));
-        if (mounted) Navigator.pop(context);
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${e.toString()}")),
+          SnackBar(content: Text("❌ Error: ${e.toString()}")),
         );
       }
     } finally {
-      // Seguridad extra
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -73,10 +91,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Nombre completo", style: TextStyle(color: Colors.white70, fontSize: 16)),
+            const Text("Nombres", style: TextStyle(color: Colors.white70, fontSize: 16)),
             const SizedBox(height: 8),
             TextField(
-              controller: _nameController,
+              controller: _nombresController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF2C2C2E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+            const Text("Apellidos", style: TextStyle(color: Colors.white70, fontSize: 16)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _apellidosController,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 filled: true,
@@ -126,6 +161,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
                   color: Colors.white70,
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+            const Text("Confirmar contraseña", style: TextStyle(color: Colors.white70, fontSize: 16)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirmPassword,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF2C2C2E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility),
+                  color: Colors.white70,
+                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                 ),
               ),
             ),

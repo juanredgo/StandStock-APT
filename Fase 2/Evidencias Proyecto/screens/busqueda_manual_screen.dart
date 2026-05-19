@@ -3,7 +3,12 @@ import 'package:standstock_app/screens/detalle_producto_screen.dart';
 import 'package:standstock_app/services/firebase_service.dart';
 
 class BusquedaManualScreen extends StatefulWidget {
-  const BusquedaManualScreen({super.key});
+  final String standId;   // ← Ahora recibe el stand del vendedor
+
+  const BusquedaManualScreen({
+    super.key,
+    required this.standId,
+  });
 
   @override
   State<BusquedaManualScreen> createState() => _BusquedaManualScreenState();
@@ -15,33 +20,36 @@ class _BusquedaManualScreenState extends State<BusquedaManualScreen> {
 
   List<Map<String, dynamic>> _resultados = [];
   bool _isLoading = false;
-  String? _errorMessage;
-
-  Future<void> _buscar(String query) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final results = await _service.searchProducts(query);
-      setState(() {
-        _resultados = results;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = "No se pudo conectar con Firestore.\nVerifica tu internet.";
-      });
-      print('Error en búsqueda: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
 
   @override
   void initState() {
     super.initState();
-    _buscar(""); // carga inicial
+    _buscar(""); // carga inicial solo del stand actual
+  }
+
+  Future<void> _buscar(String query) async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Cargamos solo los productos del stand actual
+      final allProducts = await _service.getProductsByStand(widget.standId);
+
+      if (query.trim().isEmpty) {
+        _resultados = allProducts;
+      } else {
+        final lowerQuery = query.toLowerCase();
+        _resultados = allProducts.where((p) {
+          final nombre = (p['nombre'] ?? '').toLowerCase();
+          final sku = (p['sku'] ?? '').toLowerCase();
+          return nombre.contains(lowerQuery) || sku.contains(lowerQuery);
+        }).toList();
+      }
+    } catch (e) {
+      print('Error en búsqueda: $e');
+      _resultados = [];
+    }
+
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -50,11 +58,8 @@ class _BusquedaManualScreenState extends State<BusquedaManualScreen> {
       backgroundColor: const Color(0xFF1C1C1E),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1C1E),
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text("Buscar producto", style: TextStyle(color: Colors.white)),
       ),
       body: Column(
@@ -67,43 +72,26 @@ class _BusquedaManualScreenState extends State<BusquedaManualScreen> {
               decoration: InputDecoration(
                 hintText: "Nombre o SKU...",
                 hintStyle: const TextStyle(color: Colors.white54),
-                prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                prefixIcon: const Icon(Icons.search, color: Colors.white54),
                 filled: true,
                 fillColor: const Color(0xFF2C2C2E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
                 ),
               ),
               onChanged: _buscar,
             ),
           ),
-
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF00B74A)))
-                : _errorMessage != null
-                ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.wifi_off, size: 48, color: Colors.white54),
-                  const SizedBox(height: 16),
-                  Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => _buscar(_searchController.text),
-                    child: const Text("Reintentar"),
-                  ),
-                ],
-              ),
-            )
+                ? const Center(child: CircularProgressIndicator())
                 : _resultados.isEmpty
                 ? const Center(
               child: Text(
                 "No se encontraron productos",
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: Colors.white70, fontSize: 18),
               ),
             )
                 : ListView.builder(
@@ -113,14 +101,14 @@ class _BusquedaManualScreenState extends State<BusquedaManualScreen> {
                 final p = _resultados[index];
                 return ListTile(
                   title: Text(p['nombre'], style: const TextStyle(color: Colors.white)),
-                  subtitle: Text("SKU: ${p['sku']} • \$${p['precio']}",
-                      style: const TextStyle(color: Colors.white60)),
+                  subtitle: Text(
+                    "SKU: ${p['sku']} • \$${p['precio']}",
+                    style: const TextStyle(color: Colors.white60),
+                  ),
                   trailing: Text(
                     "${p['stock_actual']} und",
                     style: TextStyle(
-                      color: (p['stock_actual'] ?? 0) <= 5
-                          ? const Color(0xFFFF3B30)
-                          : const Color(0xFF00B74A),
+                      color: (p['stock_actual'] ?? 0) <= 5 ? const Color(0xFFFF3B30) : const Color(0xFF00B74A),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
