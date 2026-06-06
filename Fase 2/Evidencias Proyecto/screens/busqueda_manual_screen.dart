@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:standstock_app/screens/detalle_producto_screen.dart';
 import 'package:standstock_app/services/firebase_service.dart';
+import 'package:standstock_app/widgets/app_scaffold.dart';
+import 'package:standstock_app/screens/detalle_producto_screen.dart';
+import 'package:standstock_app/constants/app_constants.dart';
 
 class BusquedaManualScreen extends StatefulWidget {
-  final String standId;   // ← Ahora recibe el stand del vendedor
+  final String? standId;
 
   const BusquedaManualScreen({
     super.key,
-    required this.standId,
+    this.standId,
   });
 
   @override
@@ -21,77 +23,73 @@ class _BusquedaManualScreenState extends State<BusquedaManualScreen> {
   List<Map<String, dynamic>> _resultados = [];
   bool _isLoading = false;
 
+  Future<void> _buscar(String query) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final results = await _service.searchProducts(
+        query,
+        standId: widget.standId ?? AppConstants.defaultStandId,
+      );
+      setState(() {
+        _resultados = results;
+      });
+    } catch (e) {
+      print('Error en búsqueda: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _buscar(""); // carga inicial solo del stand actual
-  }
-
-  Future<void> _buscar(String query) async {
-    setState(() => _isLoading = true);
-
-    try {
-      // Cargamos solo los productos del stand actual
-      final allProducts = await _service.getProductsByStand(widget.standId);
-
-      if (query.trim().isEmpty) {
-        _resultados = allProducts;
-      } else {
-        final lowerQuery = query.toLowerCase();
-        _resultados = allProducts.where((p) {
-          final nombre = (p['nombre'] ?? '').toLowerCase();
-          final sku = (p['sku'] ?? '').toLowerCase();
-          return nombre.contains(lowerQuery) || sku.contains(lowerQuery);
-        }).toList();
-      }
-    } catch (e) {
-      print('Error en búsqueda: $e');
-      _resultados = [];
-    }
-
-    setState(() => _isLoading = false);
+    _buscar(""); // carga solo los productos del stand actual
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final mutedColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70;
+
+    return AppScaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1C1C1E),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-        title: const Text("Buscar producto", style: TextStyle(color: Colors.white)),
+        backgroundColor: bgColor,
+        iconTheme: IconThemeData(color: textColor),
+        title: Text("Buscar Producto", style: TextStyle(color: textColor)),
       ),
+      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
+          TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
-                hintText: "Nombre o SKU...",
-                hintStyle: const TextStyle(color: Colors.white54),
-                prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                hintText: "Buscar por nombre, SKU o parte del nombre...",
+                hintStyle: TextStyle(color: mutedColor.withOpacity(0.6)),
+                prefixIcon: Icon(Icons.search, color: mutedColor),
                 filled: true,
-                fillColor: const Color(0xFF2C2C2E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+                fillColor: Theme.of(context).cardColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
                 ),
               ),
               onChanged: _buscar,
             ),
-          ),
+
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _resultados.isEmpty
-                ? const Center(
+                ? Center(
               child: Text(
-                "No se encontraron productos",
-                style: TextStyle(color: Colors.white70, fontSize: 18),
+                "No se encontraron productos.\nIntenta con otra palabra o revisa el inventario.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: mutedColor, fontSize: 16),
               ),
             )
                 : ListView.builder(
@@ -99,31 +97,41 @@ class _BusquedaManualScreenState extends State<BusquedaManualScreen> {
               itemCount: _resultados.length,
               itemBuilder: (context, index) {
                 final p = _resultados[index];
-                return ListTile(
-                  title: Text(p['nombre'], style: const TextStyle(color: Colors.white)),
-                  subtitle: Text(
-                    "SKU: ${p['sku']} • \$${p['precio']}",
-                    style: const TextStyle(color: Colors.white60),
-                  ),
-                  trailing: Text(
-                    "${p['stock_actual']} und",
-                    style: TextStyle(
-                      color: (p['stock_actual'] ?? 0) <= 5 ? const Color(0xFFFF3B30) : const Color(0xFF00B74A),
-                      fontWeight: FontWeight.bold,
+                return Card(
+                  color: Theme.of(context).cardColor,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    title: Text(p['nombre'], style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+                    subtitle: Text(
+                      "SKU: ${p['sku']} • \$${p['precio']}",
+                      style: TextStyle(color: mutedColor),
                     ),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetalleProductoScreen(
-                          nombre: p['nombre'],
-                          sku: p['sku'],
-                          stockActual: p['stock_actual'] ?? 0,
-                        ),
+                    trailing: Text(
+                      "${p['stock_actual'] ?? 0} und",
+                      style: TextStyle(
+                        color: (p['stock_actual'] ?? 0) <= 5
+                            ? const Color(0xFFFF3B30)
+                            : const Color(0xFF00B74A),
+                        fontWeight: FontWeight.bold,
                       ),
-                    );
-                  },
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetalleProductoScreen(
+                            productoId: p['id'],
+                            standId: widget.standId ?? AppConstants.defaultStandId,
+                            nombre: p['nombre'],
+                            sku: p['sku'],
+                            stockActual: p['stock_actual'] ?? 0,
+                            precio: (p['precio'] as num?)?.toDouble() ?? 0.0,
+                            soloSalidas: true, // Vendedores solo registran ventas
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),

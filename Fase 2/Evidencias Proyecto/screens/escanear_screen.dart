@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:standstock_app/services/firebase_service.dart';
 import 'package:standstock_app/screens/busqueda_manual_screen.dart';
 import 'package:standstock_app/screens/detalle_producto_screen.dart';
+import 'package:standstock_app/widgets/app_scaffold.dart';
+import 'package:standstock_app/constants/app_constants.dart';
 
 class EscanearScreen extends StatefulWidget {
-  const EscanearScreen({super.key});
+  final String? standId;          // ← Agregado para pasar el stand real
+
+  const EscanearScreen({
+    super.key,
+    this.standId,
+  });
 
   @override
   State<EscanearScreen> createState() => _EscanearScreenState();
@@ -12,6 +20,8 @@ class EscanearScreen extends StatefulWidget {
 
 class _EscanearScreenState extends State<EscanearScreen>
     with SingleTickerProviderStateMixin {
+  final FirebaseService _service = FirebaseService();
+
   bool _isScanning = true;
   String? _statusMessage;
 
@@ -37,45 +47,61 @@ class _EscanearScreenState extends State<EscanearScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
+    // Usamos cálculo manual porque esta pantalla usa Stack + Positioned
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+
+    return AppScaffold(
+      automaticallyHandleBottomInset: false,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1C1C1E),
+        backgroundColor: bgColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text("Escanear", style: TextStyle(color: Colors.white)),
+        iconTheme: IconThemeData(color: textColor),
+        title: Text("Escanear", style: TextStyle(color: textColor)),
       ),
       body: Stack(
         children: [
           // Cámara en tiempo real
           MobileScanner(
-            onDetect: (capture) {
+            onDetect: (capture) async {
               if (!_isScanning) return;
               setState(() => _isScanning = false);
 
               final List<Barcode> barcodes = capture.barcodes;
               if (barcodes.isNotEmpty) {
-                final String code = barcodes.first.rawValue ?? "Código desconocido";
+                final String code = barcodes.first.rawValue ?? "";
 
                 setState(() => _statusMessage = "Código detectado: $code");
 
-                Future.delayed(const Duration(milliseconds: 800), () {
-                  if (mounted) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetalleProductoScreen(
-                          nombre: "Producto escaneado",
-                          sku: code,
-                          stockActual: 12,
-                        ),
+                // Buscar el producto real por el código escaneado
+                final products = await _service.searchProducts(code);
+
+                if (products.isNotEmpty && mounted) {
+                  final p = products.first;
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DetalleProductoScreen(
+                        productoId: p['id'],
+                        standId: widget.standId ?? AppConstants.defaultStandId,
+                        nombre: p['nombre'],
+                        sku: p['sku'],
+                        stockActual: p['stock_actual'] ?? 0,
+                        precio: (p['precio'] as num?)?.toDouble() ?? 0.0,
+                        soloSalidas: true, // Vendedores solo registran ventas
                       ),
-                    );
-                  }
-                });
+                    ),
+                  );
+                } else if (mounted) {
+                  // Producto no encontrado
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("❌ Producto no encontrado")),
+                  );
+                  setState(() => _isScanning = true);
+                }
               }
             },
           ),
@@ -92,7 +118,7 @@ class _EscanearScreenState extends State<EscanearScreen>
             ),
           ),
 
-          // Línea de escaneo ANIMADA
+          // Línea de escaneo animada
           Center(
             child: AnimatedBuilder(
               animation: _scanAnimation,
@@ -100,9 +126,7 @@ class _EscanearScreenState extends State<EscanearScreen>
                 return Container(
                   width: 260,
                   height: 4,
-                  margin: EdgeInsets.only(
-                    top: _scanAnimation.value * 260,
-                  ),
+                  margin: EdgeInsets.only(top: _scanAnimation.value * 260),
                   decoration: BoxDecoration(
                     color: const Color(0xFF00B74A),
                     boxShadow: [
@@ -128,15 +152,15 @@ class _EscanearScreenState extends State<EscanearScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 18,
-                  color: _statusMessage != null ? const Color(0xFF00B74A) : Colors.white70,
+                  color: _statusMessage != null ? const Color(0xFF00B74A) : (Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
                 ),
               ),
             ),
           ),
 
-          // Botón manual
+          // Manual button
           Positioned(
-            bottom: 40,
+            bottom: 40 + bottomInset,
             left: 40,
             right: 40,
             child: ElevatedButton(
@@ -144,7 +168,9 @@ class _EscanearScreenState extends State<EscanearScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const BusquedaManualScreen(standId: 'stand-costanera'),
+                    builder: (context) => BusquedaManualScreen(
+                      standId: widget.standId ?? AppConstants.defaultStandId,
+                    ),
                   ),
                 );
               },
@@ -154,8 +180,8 @@ class _EscanearScreenState extends State<EscanearScreen>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: const Text(
-                "Ingresar código manualmente",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                "Preferir búsqueda manual (recomendado)",
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
             ),
           ),

@@ -1,8 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:standstock_app/screens/dashboard_vendedor_screen.dart';
+import 'package:standstock_app/screens/admin_dashboard_screen.dart';
 import 'package:standstock_app/screens/forgot_password_screen.dart';
 import 'package:standstock_app/screens/register_screen.dart';
 import 'package:standstock_app/services/firebase_service.dart';
+import 'package:standstock_app/screens/settings_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,12 +18,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _isVendedor = true;
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final mutedColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70;
+    final cardColor = Theme.of(context).cardColor;
+    final dividerColor = Theme.of(context).dividerColor;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -28,6 +35,22 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Settings icon (top right)
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: Icon(Icons.settings, color: mutedColor),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
               // Logo
               Center(
                 child: Text(
@@ -43,82 +66,53 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  _isVendedor ? "Inicia sesión como vendedor" : "Inicia sesión como administrador",
-                  style: const TextStyle(color: Colors.white70, fontSize: 18),
-                ),
-              ),
-
-              const SizedBox(height: 60),
-
-              const Text("Email", style: TextStyle(color: Colors.white70, fontSize: 16)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.white),
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF2C2C2E),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              const Text("Contraseña", style: TextStyle(color: Colors.white70, fontSize: 16)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF2C2C2E),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                  ),
+                  "Inicia sesión con tu cuenta",
+                  style: TextStyle(color: mutedColor, fontSize: 18),
                 ),
               ),
 
               const SizedBox(height: 32),
 
-              // Selección de rol
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => setState(() => _isVendedor = true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isVendedor ? const Color(0xFF00B74A) : const Color(0xFF2C2C2E),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text("Soy Vendedor", style: TextStyle(color: _isVendedor ? Colors.black : Colors.white)),
-                    ),
+              Text("Email", style: TextStyle(color: mutedColor, fontSize: 16)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _emailController,
+                style: TextStyle(color: textColor),
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: cardColor,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: dividerColor),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => setState(() => _isVendedor = false),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: !_isVendedor ? const Color(0xFF00B74A) : const Color(0xFF2C2C2E),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text("Soy Administrador", style: TextStyle(color: !_isVendedor ? Colors.black : Colors.white)),
-                    ),
-                  ),
-                ],
+                ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
+              Text("Contraseña", style: TextStyle(color: mutedColor, fontSize: 16)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: cardColor,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: dividerColor),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: mutedColor),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
 
               SizedBox(
                 width: double.infinity,
@@ -133,15 +127,62 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
 
                       if (user != null && mounted) {
+                        final role = await service.getUserRole(user.uid);
                         final standId = await service.getUserStandId(user.uid);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => DashboardVendedorScreen(standId: standId)),
+
+                        if (role == 'administrador' || role == 'super_administrador') {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+                          );
+                        } else {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => DashboardVendedorScreen(standId: standId)),
+                          );
+                        }
+                      }
+                    } on FirebaseAuthException catch (e) {
+                      if (mounted) {
+                        String mensaje = "Ocurrió un error al iniciar sesión.";
+
+                        switch (e.code) {
+                          case 'user-not-found':
+                          case 'wrong-password':
+                          case 'invalid-credential':
+                          case 'invalid-email':
+                            mensaje = "Correo o contraseña incorrectos.";
+                            break;
+                          case 'too-many-requests':
+                            mensaje = "Demasiados intentos fallidos. Intenta más tarde.";
+                            break;
+                          case 'network-request-failed':
+                            mensaje = "Sin conexión a internet. Verifica tu conexión.";
+                            break;
+                          case 'user-disabled':
+                            mensaje = "Esta cuenta ha sido deshabilitada.";
+                            break;
+                          default:
+                            mensaje = "No se pudo iniciar sesión. Intenta nuevamente.";
+                        }
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(mensaje),
+                            backgroundColor: Colors.red.shade700,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 4),
+                          ),
                         );
                       }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Ocurrió un error inesperado."),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
                       }
                     }
                   },
@@ -157,7 +198,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               const SizedBox(height: 24),
-
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
@@ -165,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
 
               Center(
                 child: TextButton(

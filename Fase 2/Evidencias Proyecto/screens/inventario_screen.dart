@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:standstock_app/services/firebase_service.dart';
+import 'package:standstock_app/widgets/app_scaffold.dart';
 
 class InventarioScreen extends StatefulWidget {
   final String standId;   // ← Ahora recibe el stand
@@ -32,33 +33,36 @@ class _InventarioScreenState extends State<InventarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final mutedColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70;
+
+    return AppScaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1C1C1E),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text("Inventario", style: TextStyle(color: Colors.white)),
+        backgroundColor: bgColor,
+        iconTheme: IconThemeData(color: textColor),
+        title: Text("Inventario", style: TextStyle(color: textColor)),
       ),
+      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _productos.isEmpty
-          ? const Center(
+          ? Center(
         child: Text(
           "No hay productos en este stand",
-          style: TextStyle(color: Colors.white70, fontSize: 18),
+          style: TextStyle(color: mutedColor, fontSize: 18),
         ),
       )
           : ListView.builder(
-        padding: const EdgeInsets.all(16),
         itemCount: _productos.length,
         itemBuilder: (context, index) {
           final p = _productos[index];
           return Card(
-            color: const Color(0xFF2C2C2E),
+            color: Theme.of(context).cardColor,
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
-              title: Text(p['nombre'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: Text("SKU: ${p['sku']} • \$${p['precio']}", style: const TextStyle(color: Colors.white70)),
+              title: Text(p['nombre'], style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+              subtitle: Text("SKU: ${p['sku']} • \$${p['precio']}", style: TextStyle(color: mutedColor)),
               trailing: Text(
                 "${p['stock_actual']} und",
                 style: TextStyle(

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:standstock_app/services/firebase_service.dart';
-import 'package:intl/intl.dart';   // ← Este import es necesario
+import 'package:intl/intl.dart';
+import 'package:standstock_app/widgets/app_scaffold.dart';   // ← Este import es necesario
 
 class MovimientosScreen extends StatefulWidget {
-  const MovimientosScreen({super.key});
+  final String? standId;
+
+  const MovimientosScreen({super.key, this.standId});
 
   @override
   State<MovimientosScreen> createState() => _MovimientosScreenState();
@@ -22,33 +25,57 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
 
   Future<void> _cargarMovimientos() async {
     setState(() => _isLoading = true);
-    _movimientos = await _service.getMovimientos();
+    final todos = await _service.getMovimientos();
+
+    if (widget.standId != null && widget.standId!.isNotEmpty) {
+      _movimientos = todos.where((m) {
+        final stand = m['stand_id']?.toString() ?? '';
+        return stand == widget.standId;
+      }).toList();
+    } else {
+      _movimientos = todos;
+    }
+
     setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final mutedColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70;
+
     final formatter = DateFormat('dd/MM/yyyy HH:mm');
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
+    final titulo = widget.standId != null && widget.standId!.isNotEmpty
+        ? "Movimientos del Stand"
+        : "Todos los Movimientos";
+
+    return AppScaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1C1C1E),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text("Movimientos", style: TextStyle(color: Colors.white)),
+        backgroundColor: bgColor,
+        iconTheme: IconThemeData(color: textColor),
+        title: Text(titulo, style: TextStyle(color: textColor)),
       ),
+      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _movimientos.isEmpty
-          ? const Center(child: Text("No hay movimientos aún", style: TextStyle(color: Colors.white70, fontSize: 18)))
+          ? Center(
+              child: Text(
+                widget.standId != null && widget.standId!.isNotEmpty
+                    ? "No hay movimientos para este stand"
+                    : "No hay movimientos aún",
+                style: TextStyle(color: mutedColor, fontSize: 18),
+              ),
+            )
           : ListView.builder(
-        padding: const EdgeInsets.all(16),
         itemCount: _movimientos.length,
         itemBuilder: (context, index) {
           final m = _movimientos[index];
           final esEntrada = m['tipo'] == 'entrada';
           return Card(
-            color: const Color(0xFF2C2C2E),
+            color: Theme.of(context).cardColor,
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
               leading: Icon(
@@ -57,15 +84,26 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
               ),
               title: Text(
                 esEntrada ? "Entrada" : "Salida",
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
               ),
-              subtitle: Text(formatter.format(m['fecha']), style: const TextStyle(color: Colors.white70)),
-              trailing: Text(
-                "${m['cantidad']} und",
-                style: TextStyle(
-                  color: esEntrada ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
+              subtitle: Text(formatter.format(m['fecha']), style: TextStyle(color: mutedColor)),
+              trailing: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "${m['cantidad']} und",
+                    style: TextStyle(
+                      color: esEntrada ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (m['metodo_pago'] != null && m['metodo_pago'].toString().isNotEmpty)
+                    Text(
+                      m['metodo_pago'].toString().toUpperCase(),
+                      style: TextStyle(color: mutedColor.withOpacity(0.7), fontSize: 11),
+                    ),
+                ],
               ),
             ),
           );

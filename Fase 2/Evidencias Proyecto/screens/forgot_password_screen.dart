@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -12,62 +13,114 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _isLoading = false;
 
   Future<void> _enviarEnlace() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Por favor ingresa tu correo electrónico")),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    // Simulación de envío (aquí irá Firebase Auth más adelante)
-    await Future.delayed(const Duration(milliseconds: 1200));
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Enlace de recuperación enviado. Revisa tu correo (incluyendo carpeta de spam)."),
+          backgroundColor: Color(0xFF00B74A),
+          duration: Duration(seconds: 4),
+        ),
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Enlace de recuperación enviado a tu correo"),
-        backgroundColor: Color(0xFF00B74A),
-      ),
-    );
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      String mensaje = "Ocurrió un error al enviar el correo.";
 
-    Navigator.pop(context); // vuelve al login
+      switch (e.code) {
+        case 'user-not-found':
+          mensaje = "No existe una cuenta con ese correo electrónico.";
+          break;
+        case 'invalid-email':
+          mensaje = "El formato del correo electrónico no es válido.";
+          break;
+        case 'too-many-requests':
+          mensaje = "Demasiados intentos. Intenta más tarde.";
+          break;
+        default:
+          mensaje = "No se pudo enviar el enlace. Intenta nuevamente.";
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Error inesperado. Intenta nuevamente."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final mutedColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70;
+    final cardColor = Theme.of(context).cardColor;
+    final dividerColor = Theme.of(context).dividerColor;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1C1C1E),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text("Recuperar contraseña", style: TextStyle(color: Colors.white)),
+        title: Text("Recuperar contraseña", style: TextStyle(color: textColor)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
-              style: TextStyle(fontSize: 16, color: Colors.white70),
+              style: TextStyle(fontSize: 16, color: mutedColor),
             ),
             const SizedBox(height: 32),
 
-            const Text("Email", style: TextStyle(color: Colors.white70, fontSize: 16)),
+            Text("Email", style: TextStyle(color: mutedColor, fontSize: 16)),
             const SizedBox(height: 8),
             TextField(
               controller: _emailController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: const Color(0xFF2C2C2E),
+                fillColor: cardColor,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+                  borderSide: BorderSide(color: dividerColor),
                 ),
               ),
             ),
